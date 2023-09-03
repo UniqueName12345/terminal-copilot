@@ -1,14 +1,22 @@
-import yaml
-import requests
-from splinter import Browser
+import torch
+from transformers import LlamaTokenizer, LlamaForCausalLM
+import os
 
-config = yaml.safe_load(open('config.yaml'))
+## v2 models
+model_path = 'openlm-research/open_llama_7b_v2'
 
-with Browser('firefox') as browser:
-    browser.visit("https://chat.openai.com/")
-    browser.maximize_window()
-    browser.find_by_id("login-button").click()
-    browser.find_by_id("username").fill(config['openai']['email'])
-    browser.find_by_id("action").click()
-    browser.find_by_id("password").fill(config['openai']['password'])
-    browser.find_by_id("action").click()
+
+tokenizer = LlamaTokenizer.from_pretrained(model_path)
+model = LlamaForCausalLM.from_pretrained(
+    model_path, torch_dtype=torch.float16, device_map='auto',
+)
+
+def execute_command(command):
+    return os.system(command)
+
+preprompt = "You are a terminal copilot that helps the user with any terminal-related issues. Only respond with the command nessecary to do the task at hand."
+def generate_text(prompt):
+    return tokenizer(prompt, return_tensors='pt').input_ids
+
+def generate(prompt):
+    return model.generate(generate_text(prompt), max_length=128)
